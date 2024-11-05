@@ -7,6 +7,8 @@ import datetime
 import ctypes
 import datetime
 import socket, struct
+import os
+import subprocess
 
 bpf_program = """
 #include <linux/bpf.h>
@@ -25,6 +27,7 @@ struct entry_t {
 	u32 uid;
 	u32 pid;
 	char path[32];
+	u64 i_no;
 	u64 ip;
 	bool allowed;
 };
@@ -44,6 +47,7 @@ LSM_PROBE(inode_create, struct inode *dir, struct dentry *dentry, umode_t mode) 
 	e.syscall_type = 1;
 	e.uid = u_id;
 	e.pid = bpf_get_current_pid_tgid() >> 32;
+	e.i_no = dir->i_ino;
 	bpf_probe_read_kernel_str(e.path, sizeof(e.path), dentry->d_name.name);
 
 	u32 key = 0;
@@ -135,14 +139,27 @@ class Value(ctypes.Structure):
     _fields_ = [("value", ctypes.c_uint64)]
 
 
+def get_file_path_from_inode(inode, search_path='/home/sekar'):
+	result = subprocess.check_output(
+		['find', search_path, '-inum', str(inode), '-print'],
+		stderr=subprocess.DEVNULL,
+	).decode('utf-8').strip()
+
+	if result:
+		return result
+	else:
+		raise ValueError(f"Invalid inode {inode}")
+    
+
 if __name__ == "__main__":
 
 	if len(sys.argv) != 2:
-		print("Usage: python3 eguard.py <restricted_dir_inode>")
+		print("Usage: python3 eguard.py <restricted_dir>")
 		exit(1)
 
 
-	restricted_inode = int(sys.argv[1])
+	restricted_dir = sys.argv[1]
+	restricted_inode = os.stat(restricted_dir).st_ino
 
 	# Load and attach the BPF program
 	bpf = BPF(text=bpf_program)
@@ -170,7 +187,10 @@ if __name__ == "__main__":
 				syscall = ""
 				if v.syscall_type == 1:
 					syscall = "open"
-					path = v.path.decode('utf-8')
+					try:
+						path = get_file_path_from_inode(v.i_no) + "/" + v.path.decode('utf-8')
+					except Exception as e:
+						path = v.path.decode('utf-8')
 
 				elif v.syscall_type == 2:
 					syscall = "execve"
