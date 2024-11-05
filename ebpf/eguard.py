@@ -38,7 +38,7 @@ LSM_PROBE(inode_create, struct inode *dir, struct dentry *dentry, umode_t mode) 
 	struct entry_t e;
 	u32 u_id;
 	u64 ts;
-	ts = bpf_ktime_get_ns();
+	ts = bpf_ktime_get_tai_ns();
 	u_id = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
 	e.syscall_type = 1;
@@ -72,7 +72,7 @@ LSM_PROBE(bprm_check_security, struct linux_binprm *bprm) {
 	struct entry_t e;
 	u32 u_id;
 	u64 ts;
-	ts = bpf_ktime_get_ns();
+	ts = bpf_ktime_get_tai_ns();
 	u_id = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
 	e.syscall_type = 2;
@@ -104,7 +104,7 @@ LSM_PROBE(socket_connect, struct socket *sock, struct sockaddr *addr, int addrle
 	struct entry_t e;
 	u32 u_id;
 	u64 ts;
-	ts = bpf_ktime_get_ns();
+	ts = bpf_ktime_get_tai_ns();
 	u_id = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
 	e.syscall_type = 3;
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 			sleep(2)
 			hooks_map = bpf["hooks"]
 			for k, v in hooks_map.items():
-				timestamp = datetime.datetime.now().replace(microsecond=0).isoformat()
+				timestamp = datetime.datetime.fromtimestamp(k.value/1e9).replace(microsecond=0).isoformat()
 				syscall = ""
 				if v.syscall_type == 1:
 					syscall = "open"
