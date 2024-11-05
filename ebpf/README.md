@@ -47,7 +47,8 @@ Press Ctrl+C to stop the tool
 <br>
 
 #### Sample output
-![alt text](image-4.png)
+![image](https://github.com/user-attachments/assets/6ae40a2d-5f08-4279-aedf-421f5fbb3b47)
+
 
 #### Observations
 - Attempts to create files inside `/home/sekar/test` are denied
